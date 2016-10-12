@@ -1,11 +1,14 @@
 let Queue = require('../../../Helios/Pyrois/queue/queue');
 
-describe('Queue', function() {
+describe('Queue', () => {
 
     let queue;
 
     beforeEach(() => {
         queue = new Queue(2);
+
+        spyOn(queue.logger, 'info').and.callFake(() => {});
+        spyOn(queue.logger, 'error').and.callFake(() => {});
     });
 
     it('_hasJobsToRun should return true when jobs array not empty', () => {
@@ -38,13 +41,16 @@ describe('Queue', function() {
     });
 
     it('_runJobs should run maximum amount of jobs', () => {
+        spyOn(queue, '_finishJobExecutionWithSuccess').and.callThrough();
+        spyOn(queue, '_finishJobExecutionWithFailure').and.callThrough();
+
         let job1Promise = buildJobPromise();
         let job2Promise = buildJobPromise();
         let job3Promise = buildJobPromise();
 
-        let job1 = buildJob(job1Promise);
-        let job2 = buildJob(job2Promise);
-        let job3 = buildJob(job3Promise);
+        let job1 = buildJob('job1', job1Promise);
+        let job2 = buildJob('job2', job2Promise);
+        let job3 = buildJob('job3', job3Promise);
 
         queue.addJob(job1);
         queue.addJob(job2);
@@ -58,16 +64,19 @@ describe('Queue', function() {
 
         expect(queue.runningJobs).toEqual(2);
         expect(queue.jobs.length).toEqual(0);
+        expect(queue._finishJobExecutionWithSuccess).toHaveBeenCalledWith(job1);
 
-        job2Promise.reject();
+        job2Promise.reject('reason');
 
         expect(queue.runningJobs).toEqual(1);
         expect(queue.jobs.length).toEqual(0);
+        expect(queue._finishJobExecutionWithFailure).toHaveBeenCalledWith(job2, 'reason');
 
         job3Promise.fulfill();
 
         expect(queue.runningJobs).toEqual(0);
         expect(queue.jobs.length).toEqual(0);
+        expect(queue._finishJobExecutionWithSuccess).toHaveBeenCalledWith(job3);
     });
 
     function buildJobPromise() {
@@ -81,8 +90,9 @@ describe('Queue', function() {
         return promise;
     }
 
-    function buildJob(promise) {
+    function buildJob(name, promise) {
         return {
+            name,
             run: () => promise
         };
     }

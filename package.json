@@ -18,5 +18,8 @@
   "homepage": "https://github.com/doojin/topcondo#readme",
   "devDependencies": {
     "jasmine": "^2.5.2"
+  },
+  "dependencies": {
+    "winston": "^2.2.0"
   }
 }
